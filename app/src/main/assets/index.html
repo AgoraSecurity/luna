@@ -83,8 +83,8 @@
     .rec-items li { font-size: 13.5px; color: #555; line-height: 1.6; padding: 4px 0 4px 16px; position: relative; }
     .rec-items li::before { content: "·"; position: absolute; left: 0; color: #bbb; font-size: 16px; line-height: 1.4; }
 
-    /* Log button */
-    .log-btn-wrap { padding: 28px 20px 0; }
+    /* Log button visibility fix */
+    .log-btn-wrap { padding: 28px 20px 100px; position: relative; z-index: 10; }
     .log-btn { width: 100%; padding: 16px; background: var(--text); color: #fff; border: none; border-radius: 14px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; letter-spacing: -0.2px; transition: opacity 0.15s; }
     .log-btn:active { opacity: 0.8; }
 
@@ -132,9 +132,20 @@
     /* ══════════════════════════════
        LOG SHEET
     ══════════════════════════════ */
-    .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+    .sheet-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
     .sheet-overlay.open { display: flex; }
-    .sheet { background: #fff; border-radius: 24px 24px 0 0; padding: 28px 24px 44px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+    .sheet {
+      background: #fff;
+      border-radius: 24px 24px 0 0;
+      padding: 28px 24px 64px;
+      width: 100%;
+      max-width: 480px;
+      max-height: 85vh;
+      min-height: 90%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    }
     .sheet-title { font-size: 18px; font-weight: 600; margin-bottom: 24px; }
 
     .field-label { font-family: 'DM Mono', monospace; font-size: 10.5px; text-transform: uppercase; color: #aaa; letter-spacing: 1px; display: block; margin-bottom: 10px; }
@@ -523,6 +534,27 @@
     }
   };
 
+  // Helper to get local YYYY-MM-DD
+  function getLocalDateString(date = new Date()) {
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split('T')[0];
+  }
+
+  // Helper for consistent local date creation from YYYY-MM-DD or ISO strings
+  function parseLocalDate(input) {
+    if (!input) return null;
+    try {
+      const iso = input.includes('T') ? input.split('T')[0] : input;
+      const [y, m, d] = iso.split('-').map(Number);
+      if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+      return new Date(y, m - 1, d);
+    } catch (e) {
+      console.error("Date parsing failed for:", input, e);
+      return null;
+    }
+  }
+
   function getPhaseForDay(cycleDay, cycleLength) {
     const lutealStart = cycleLength - 13; // luteal is ~14 days, back-calculated
     if (cycleDay <= 5) return PHASES.m;
@@ -539,26 +571,27 @@
   let _state = null;
 
   function defaultState() {
-    // Seed: last period started March 20, 2026 → today (Apr 3) = day 15
-    const seedDate = new Date('2026-03-20');
+    // Seed: last period started March 20, 2026
+    const seedDate = new Date(2026, 2, 20); // Mar 20 (Local)
     return {
-      cycleStarts: [seedDate.toISOString()], // array of ISO strings, most recent last
+      cycleStarts: [getLocalDateString(seedDate)], // array of YYYY-MM-DD strings
       logs: {},       // { 'YYYY-MM-DD': { energy, mood, symptoms[], note, periodStart } }
       avgCycleLength: 28
     };
   }
 
-  async function loadState() {
+    async function loadState() {
+    console.log("Starting loadState...");
     // 1. Try Native Bridge first
     if (window.LunaNative) {
       try {
         const nativeData = LunaNative.loadData();
-        if (nativeData) {
+        if (nativeData && nativeData.trim() !== "") {
           _state = JSON.parse(nativeData);
           console.log("State loaded from Native Bridge");
         }
       } catch (e) {
-        console.error("Error loading from LunaNative:", e);
+        console.error("Error loading/parsing from LunaNative:", e);
       }
     }
 
@@ -579,6 +612,11 @@
     if (!_state) {
       _state = defaultState();
       console.log("State initialized with defaults");
+    }
+
+    // Remove old logs/starts that are ISO strings if we just migrated
+    if (_state && _state.cycleStarts) {
+      _state.cycleStarts = _state.cycleStarts.map(s => s.includes('T') ? s.split('T')[0] : s);
     }
 
     // Ensure both are in sync after load
@@ -624,12 +662,14 @@
 
   function getLastCycleStart() {
     if (!_state.cycleStarts.length) return null;
-    return new Date(_state.cycleStarts[_state.cycleStarts.length - 1]);
+    // We store strings, so parse back to local date
+    const lastStr = _state.cycleStarts[_state.cycleStarts.length - 1];
+    return parseLocalDate(lastStr);
   }
 
   function getCycleLength() {
     // Average of last 3 recorded cycle lengths, fallback 28
-    const starts = _state.cycleStarts.map(s => new Date(s));
+    const starts = _state.cycleStarts.map(s => parseLocalDate(s));
     if (starts.length < 2) return _state.avgCycleLength || 28;
     const lengths = [];
     for (let i = starts.length - 1; i >= 1 && lengths.length < 3; i--) {
@@ -644,8 +684,8 @@
     const last = getLastCycleStart();
     if (!last) return 1;
     const today = new Date(); today.setHours(0,0,0,0);
-    const d = last; d.setHours(0,0,0,0);
-    return Math.floor((today - d) / 86400000) + 1;
+    const lastD = new Date(last); lastD.setHours(0,0,0,0);
+    return Math.floor((today - lastD) / 86400000) + 1;
   }
 
   function getNextPeriodDate() {
@@ -664,7 +704,7 @@
   // Get phase info for an arbitrary date (past or future)
   function getPhaseForDate(date) {
     const d = new Date(date); d.setHours(0,0,0,0);
-    const starts = _state.cycleStarts.map(s => { const x = new Date(s); x.setHours(0,0,0,0); return x; }).sort((a,b) => a-b);
+    const starts = _state.cycleStarts.map(s => parseLocalDate(s)).sort((a,b) => a-b);
     if (!starts.length) return null;
     const len = getCycleLength();
 
@@ -934,8 +974,8 @@
     card.classList.remove('active');
     document.getElementById('periodDateGroup').style.display = 'none';
     document.getElementById('shortCycleWarn').style.display = 'none';
-    // Default date input to today
-    document.getElementById('periodDateInput').value = new Date().toISOString().slice(0,10);
+    // Default date input to today (Local)
+    document.getElementById('periodDateInput').value = getLocalDateString();
 
     document.querySelectorAll('[data-group="energy"]').forEach(c => c.classList.remove('on'));
     document.querySelector('[data-group="energy"]:nth-child(2)').classList.add('on');
@@ -976,7 +1016,7 @@
     const warn = document.getElementById('shortCycleWarn');
     const last = getLastCycleStart();
     if (!last) { warn.style.display = 'none'; return; }
-    const selected = new Date(iso + 'T12:00:00Z');
+    const selected = parseLocalDate(iso);
     const lastD = new Date(last); lastD.setHours(0,0,0,0);
     const diff = Math.round((selected - lastD) / 86400000);
     warn.style.display = (diff >= 0 && diff < 18) ? 'block' : 'none';
@@ -989,21 +1029,24 @@
   }
 
   function saveLog() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateString();
     const energy = document.querySelector('[data-group="energy"].on')?.textContent || 'Medium';
     const mood = document.querySelector('[data-group="mood"].on')?.textContent || 'Neutral';
     const symptoms = Array.from(document.querySelectorAll('.sym-chip.on')).map(c => c.textContent);
     const note = document.getElementById('noteInput').value.trim();
 
     if (!_state.logs) _state.logs = {};
-    _state.logs[today] = { energy, mood, symptoms, note, periodStart: periodCardActive };
+    _state.logs[today] = {
+      energy, mood, symptoms, note,
+      periodStart: periodCardActive,
+      timestamp: new Date().toISOString() // Audit UTC timestamp
+    };
 
     if (periodCardActive) {
       const selectedIso = document.getElementById('periodDateInput').value;
-      const newStart = new Date(selectedIso + 'T12:00:00Z').toISOString();
-      const alreadyExists = _state.cycleStarts.some(s => s.slice(0,10) === selectedIso);
+      const alreadyExists = _state.cycleStarts.some(s => s === selectedIso);
       if (!alreadyExists) {
-        _state.cycleStarts.push(newStart);
+        _state.cycleStarts.push(selectedIso);
         _state.cycleStarts.sort();
         _state.avgCycleLength = getCycleLength();
       }
@@ -1037,12 +1080,12 @@
 
     const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     starts.forEach((iso, i) => {
-      const d = new Date(iso);
-      const label = `${MONTH[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+      const d = parseLocalDate(iso);
+      const label = `${MONTH[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
       const nextIso = starts[i - 1];
       let meta = 'Most recent cycle';
       if (nextIso) {
-        const gap = Math.round((new Date(nextIso) - d) / 86400000);
+        const gap = Math.round((parseLocalDate(nextIso) - d) / 86400000);
         meta = `${gap}-day cycle`;
       } else if (starts.length === 1) {
         meta = 'Only cycle recorded';
@@ -1062,7 +1105,7 @@
   function openEditCycle(iso) {
     editingCycleIso = iso;
     const dateInput = document.getElementById('editCycleDateInput');
-    dateInput.value = iso.slice(0,10);
+    dateInput.value = iso;
     document.getElementById('editShortCycleWarn').style.display = 'none';
     document.getElementById('editCycleOverlay').classList.add('open');
   }
@@ -1085,7 +1128,7 @@
     const currentIdx = sorted.findIndex(s => s === editingCycleIso);
     const prevIso = currentIdx > 0 ? sorted[currentIdx - 1] : null;
     if (!prevIso) { warn.style.display = 'none'; return; }
-    const diff = Math.round((new Date(iso + 'T12:00:00Z') - new Date(prevIso)) / 86400000);
+    const diff = Math.round((parseLocalDate(iso) - parseLocalDate(prevIso)) / 86400000);
     warn.style.display = (diff >= 0 && diff < 18) ? 'block' : 'none';
   }
 
@@ -1093,12 +1136,13 @@
     if (!editingCycleIso) return;
     const newIso = document.getElementById('editCycleDateInput').value;
     if (!newIso) return;
-    const newStart = new Date(newIso + 'T12:00:00Z').toISOString();
+
     // Check it won't clash with another existing entry
-    const clash = _state.cycleStarts.some(s => s.slice(0,10) === newIso && s !== editingCycleIso);
+    const clash = _state.cycleStarts.some(s => s === newIso && s !== editingCycleIso);
     if (clash) { showToast('That date is already in your history'); return; }
+
     _state.cycleStarts = _state.cycleStarts.filter(s => s !== editingCycleIso);
-    _state.cycleStarts.push(newStart);
+    _state.cycleStarts.push(newIso);
     _state.cycleStarts.sort();
     _state.avgCycleLength = getCycleLength();
     persistState();
