@@ -4,7 +4,5 @@
 
 ## Checklist
 
-- [ ] `./gradlew ktfmtCheck` passes (or I ran `ktfmtFormat`)
-- [ ] `./gradlew testDebugUnitTest` passes
-- [ ] `./gradlew lintDebug detekt` are clean (or issues are explained below)
+- [ ] `make ci` passes
 - [ ] Notes / screenshots added if UI changed
