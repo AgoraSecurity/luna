@@ -51,7 +51,12 @@ fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                settings.databaseEnabled = true
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
+                
+                // Add the native bridge
+                addJavascriptInterface(LunaBridge(context), "LunaNative")
+
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)

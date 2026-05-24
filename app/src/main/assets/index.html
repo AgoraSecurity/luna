@@ -535,10 +535,8 @@
   // STATE & PERSISTENCE
   // ══════════════════════════════════════════════════════════
 
-  const BACKEND = 'https://luna-backend.agorabots.com/state';
   const LS_KEY = 'luna_v1';
   let _state = null;
-  let _offline = false;
 
   function defaultState() {
     // Seed: last period started March 20, 2026 → today (Apr 3) = day 15
@@ -551,43 +549,73 @@
   }
 
   async function loadState() {
-    try {
-      const res = await fetch(BACKEND);
-      if (!res.ok) throw new Error('GET ' + res.status);
-      const data = await res.json();
-      _state = (data && data.cycleStarts) ? data : null;
-      _offline = false;
-    } catch(e) {
-      _offline = true;
-      try { _state = JSON.parse(localStorage.getItem(LS_KEY)); } catch(_) { _state = null; }
+    // 1. Try Native Bridge first
+    if (window.LunaNative) {
+      try {
+        const nativeData = LunaNative.loadData();
+        if (nativeData) {
+          _state = JSON.parse(nativeData);
+          console.log("State loaded from Native Bridge");
+        }
+      } catch (e) {
+        console.error("Error loading from LunaNative:", e);
+      }
     }
+
+    // 2. Fallback to localStorage if native failed or doesn't exist
+    if (!_state) {
+      try {
+        const lsData = localStorage.getItem(LS_KEY);
+        if (lsData) {
+          _state = JSON.parse(lsData);
+          console.log("State loaded from localStorage");
+        }
+      } catch (e) {
+        console.error("Error loading from localStorage:", e);
+      }
+    }
+
+    // 3. Fallback to default
     if (!_state) {
       _state = defaultState();
-      persistState();
+      console.log("State initialized with defaults");
     }
-    // Always keep local copy in sync
-    try { localStorage.setItem(LS_KEY, JSON.stringify(_state)); } catch(_) {}
+
+    // Ensure both are in sync after load
+    syncToPersistence();
+  }
+
+  function syncToPersistence() {
+    if (!_state) return;
+    const dataStr = JSON.stringify(_state);
+
+    // Save to localStorage
+    try {
+      localStorage.setItem(LS_KEY, dataStr);
+    } catch (e) {
+      console.error("LocalStorage save failed:", e);
+    }
+
+    // Save to Native Bridge
+    if (window.LunaNative) {
+      try {
+        LunaNative.saveData(dataStr);
+      } catch (e) {
+        console.error("Native Bridge save failed:", e);
+      }
+    }
   }
 
   function persistState() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(_state)); } catch(_) {}
-    if (_offline) return;
-    setSyncStatus('syncing');
-    fetch(BACKEND, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(_state)
-    }).then(r => {
-      if (!r.ok) throw new Error('PUT ' + r.status);
-      setSyncStatus('idle');
-    }).catch(() => {
-      setSyncStatus('idle');
-      showToast('Saved locally');
-    });
+    syncToPersistence();
+    // Visual feedback (optional since it's now local and fast)
+    // showToast('Saved');
   }
 
   function setSyncStatus(s) {
-    document.getElementById('syncBar').className = 'sync-bar' + (s === 'syncing' ? ' syncing' : '');
+    // No longer using background sync bar, but keeping for UI compatibility if needed
+    const bar = document.getElementById('syncBar');
+    if (bar) bar.className = 'sync-bar' + (s === 'syncing' ? ' syncing' : '');
   }
 
   // ══════════════════════════════════════════════════════════
