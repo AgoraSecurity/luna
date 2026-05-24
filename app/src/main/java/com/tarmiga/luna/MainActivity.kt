@@ -1,16 +1,23 @@
 package com.tarmiga.luna
 
 import android.os.Bundle
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.viewinterop.AndroidView
 import com.tarmiga.luna.ui.theme.LunaTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,8 +27,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             LunaTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
+                    WebViewScreen(
+                        url = "file:///android_asset/index.html",
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -31,17 +38,33 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
+    var webView by remember { mutableStateOf<WebView?>(null) }
+    var canGoBack by remember { mutableStateOf(false) }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    LunaTheme {
-        Greeting("Android")
+    BackHandler(enabled = canGoBack) {
+        webView?.goBack()
     }
+
+    AndroidView(
+        factory = { context ->
+            WebView(context).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.cacheMode = WebSettings.LOAD_DEFAULT
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                        canGoBack = view?.canGoBack() ?: false
+                    }
+                }
+                loadUrl(url)
+                webView = this
+            }
+        },
+        update = {
+            webView = it
+        },
+        modifier = modifier.fillMaxSize()
+    )
 }
