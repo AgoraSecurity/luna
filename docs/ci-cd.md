@@ -60,7 +60,7 @@ set -euo pipefail
 ./gradlew --quiet --no-daemon ktfmtCheck
 ```
 
-It's installed automatically by the Gradle `installGitHooks` task, which is wired to `:app:preBuild` — i.e. the first time you run any build, the hook is copied into `.git/hooks/pre-commit` and made executable.
+It's installed automatically by the Gradle `installGitHooks` task, which is wired to `:app:preBuild` — i.e. the first time you run any build, the hook is copied into `.git/hooks/pre-commit` and made executable. To install it explicitly without a full build: `make setup` (or `./gradlew installGitHooks`).
 
 **Bypassing the hook** (only if you know what you're doing):
 
@@ -183,13 +183,21 @@ File: [`.github/dependabot.yml`](../.github/dependabot.yml)
 
 ## Running CI locally
 
-The fastest way to reproduce a failing CI run on your machine:
+The [`Makefile`](../Makefile) at the repo root mirrors the CI pipeline:
+
+```bash
+make ci
+```
+
+This is exactly the Gradle invocation GitHub Actions runs:
 
 ```bash
 ./gradlew ktfmtCheck detekt lintDebug testDebugUnitTest assembleDebug
 ```
 
 If a PR check fails and the logs aren't enough, download the `build-reports` artifact from the Actions run summary page.
+
+> **Note:** `make ci` covers the `ci.yml` workflow only. The `gitleaks.yml` secret-scan workflow runs in CI but isn't reproduced locally — secret scanning is more useful when it runs against the pushed history than against an unpushed working tree.
 
 ## Adding new checks
 
