@@ -11,12 +11,14 @@ flowchart LR
   Hook -->|passes| Push[git push]
   Push --> PR[Open PR / push to main]
   PR --> CI[GitHub Actions: ci.yml]
+  PR --> Scan[GitHub Actions: gitleaks.yml]
   CI --> Fmt[ktfmtCheck]
   CI --> Det[detekt]
   CI --> Lint[lintDebug]
   CI --> Test[testDebugUnitTest]
   CI --> Asm[assembleDebug]
-  Fmt & Det & Lint & Test & Asm --> Result[PR check status]
+  Scan --> Secrets[Gitleaks]
+  Fmt & Det & Lint & Test & Asm & Secrets --> Result[PR check status]
   Result -->|failure| Artifacts[Upload build/reports/**]
 ```
 
@@ -36,6 +38,7 @@ The pipeline has two layers:
 | **Android Lint** | Android-specific issues (UI, perf, security, deprecated APIs, target SDK) | CI | `android { lint { ... } }` in [`app/build.gradle.kts`](../app/build.gradle.kts) |
 | **JUnit / Gradle test** | JVM unit tests | CI | `:app:testDebugUnitTest` |
 | **GitHub Actions** | Orchestration | Cloud | [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) |
+| **Gitleaks** | Secret scanning (API keys, tokens, credentials) | CI | [`.github/workflows/gitleaks.yml`](../.github/workflows/gitleaks.yml) |
 | **Dependabot** | Weekly dependency updates | GitHub | [`.github/dependabot.yml`](../.github/dependabot.yml) |
 
 ### Why these choices
@@ -109,6 +112,35 @@ Older runs on the same branch are cancelled when a new commit is pushed — save
 ### Why Node 24-era action versions
 
 All actions are pinned to majors that run on Node.js 24 (GitHub deprecated Node 20 in Sep 2026): `checkout@v6`, `setup-java@v5`, `setup-gradle@v5`, `upload-artifact@v7`. Dependabot will bump them when new majors land.
+
+## Secret scanning (Gitleaks)
+
+File: [`.github/workflows/gitleaks.yml`](../.github/workflows/gitleaks.yml)
+
+Runs in parallel with the main `ci.yml` workflow so PRs get fast feedback even if Gradle is slow.
+
+### Triggers
+
+- `pull_request` (any branch) — scans the diff
+- `push` to `main`
+- Weekly schedule (Monday 06:00 UTC) — scans full history to catch anything that slipped in
+
+`fetch-depth: 0` is set so Gitleaks can walk the full git history (its default behaviour for `push`/`schedule`).
+
+### What it catches
+
+API keys, OAuth tokens, AWS/GCP credentials, private keys, JWTs, etc. — based on Gitleaks' [default ruleset](https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml). No project-level config is needed for sensible defaults.
+
+### Suppressing a false positive
+
+If a "secret" is intentional (test fixture, public key, sample value), append `# gitleaks:allow` to the line. To globally allowlist a pattern, add a `.gitleaks.toml` at repo root — see the [Gitleaks docs](https://github.com/gitleaks/gitleaks#configuration).
+
+### Note on the `gitleaks-action` license
+
+`gitleaks/gitleaks-action@v2` is free for personal GitHub accounts. For **organization** accounts it requires a `GITLEAKS_LICENSE` secret (free OSS keys available, or paid plan). If this repo is moved under an org and the workflow starts failing with a license error, either:
+
+- request a free OSS license at [gitleaks.io](https://gitleaks.io), or
+- replace the action with a direct binary install (download the `gitleaks` release tarball and run `gitleaks detect --source . --redact`).
 
 ## Detekt configuration
 
