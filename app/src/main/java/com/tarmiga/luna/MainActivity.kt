@@ -1,9 +1,12 @@
 package com.tarmiga.luna
 
 import android.os.Bundle
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -51,6 +54,10 @@ fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
+                settings.databaseEnabled = true
+                settings.allowFileAccess = true
+                settings.useWideViewPort = true
+                settings.loadWithOverviewMode = true
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
 
                 // Add the native bridge
@@ -62,6 +69,14 @@ fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
                         canGoBack = view?.canGoBack() ?: false
                     }
                 }
+
+                webChromeClient = object : WebChromeClient() {
+                    override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                        Log.d("LunaJS", "${consoleMessage?.message()} -- From line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}")
+                        return true
+                    }
+                }
+
                 loadUrl(url)
                 webView = this
             }

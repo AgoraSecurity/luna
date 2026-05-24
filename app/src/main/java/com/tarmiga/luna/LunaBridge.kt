@@ -15,8 +15,8 @@ class LunaBridge(context: Context) {
     }
 
     @JavascriptInterface
-    fun loadData(): String? {
-        val data = prefs.getString("luna_state", null)
+    fun loadData(): String {
+        val data = prefs.getString("luna_state", "") ?: ""
         Log.d("LunaBridge", "Loading data: $data")
         return data
     }

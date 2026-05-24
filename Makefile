@@ -13,7 +13,7 @@ APP_ID := com.tarmiga.luna
 MAIN_ACTIVITY := $(APP_ID)/.MainActivity
 
 .DEFAULT_GOAL := help
-.PHONY: help setup hooks format fmt format-check lint detekt android-lint test build release install launch run devices ci clean deps tasks
+.PHONY: help setup hooks format fmt fix format-check lint detekt android-lint test build release install launch run devices ci clean deps tasks
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "; printf "\nUsage: make <target>\n\nTargets:\n"} \
@@ -32,6 +32,8 @@ format: ## Auto-format Kotlin sources (ktfmt, Google style)
 	$(GRADLE) ktfmtFormat
 
 fmt: format ## Alias for `format`
+
+fix: format ## Auto-fix issues Make can repair
 
 format-check: ## Verify Kotlin formatting without modifying files
 	$(GRADLE) ktfmtCheck
@@ -73,7 +75,14 @@ devices: ## List connected adb devices (USB + wireless)
 # ── Pipelines ─────────────────────────────────────────────────────────────
 
 ci: ## Run the exact pipeline GitHub Actions runs
-	$(GRADLE) ktfmtCheck detekt lintDebug testDebugUnitTest assembleDebug
+	@$(MAKE) format-check || { \
+		echo ""; \
+		echo "Format check did not pass."; \
+		echo "If ktfmt reported invalid formatting, run: make fix"; \
+		echo "Then retry: make ci"; \
+		exit 1; \
+	}
+	$(GRADLE) detekt lintDebug testDebugUnitTest assembleDebug
 
 # ── Housekeeping ──────────────────────────────────────────────────────────
 
