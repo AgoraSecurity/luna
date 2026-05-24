@@ -1,0 +1,13 @@
+title = "Luna Gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "JetBrains planning mode approval-state IDs"
+condition = "AND"
+paths = ['''^\.idea/planningMode\.xml$''']
+regexTarget = "line"
+regexes = [
+  '''<entry key="[0-9]{8}-[0-9]{6}-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" value="true" />''',
+]
