@@ -2,9 +2,7 @@
 
 Android app (`com.tarmiga.luna`) — WebView shell with a Compose theme layer.
 
-[![CI](https://github.com/tarmiga/Luna/actions/workflows/ci.yml/badge.svg)](https://github.com/tarmiga/Luna/actions/workflows/ci.yml)
-
-> Update the badge URL if your GitHub org/repo name differs.
+[![CI](https://github.com/agorasecurity/Luna/actions/workflows/ci.yml/badge.svg)](https://github.com/agorasecurity/Luna/actions/workflows/ci.yml)
 
 ## Requirements
 
@@ -44,6 +42,10 @@ Run the full CI suite locally:
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. Failed runs upload `build/reports/**` as artifacts.
+GitHub Actions (`.github/workflows/ci.yml`) runs on every PR and on pushes to `main`. Failed runs upload `build/reports/**` as artifacts. Dependabot opens weekly PRs for Gradle and GitHub Actions updates.
 
-Dependabot opens weekly PRs for Gradle and GitHub Actions updates.
+For the full pipeline reference (tool choices, Detekt rules, troubleshooting), see [`docs/ci-cd.md`](docs/ci-cd.md).
+
+## Documentation
+
+- [`docs/ci-cd.md`](docs/ci-cd.md) — CI/CD pipeline reference
