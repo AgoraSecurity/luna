@@ -9,7 +9,7 @@ espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 kotlin = "2.2.10"
-composeBom = "2026.02.01"
+composeBom = "2026.05.01"
 mockito = "5.14.2"
 
 [libraries]
