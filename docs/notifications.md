@@ -23,7 +23,7 @@ Sent 3 days after your period was expected to start if it hasn't been logged yet
 - **Title**: Your period is a few days late
 - **Text**: Cycles can vary. If it doesn't arrive soon, it may be worth checking in.
 
-### 4. Daily Tip + Log Reminder
+### 4. Phase-Relevant Tips
 Sent at 9:00 AM on 5 random days within each phase. Includes a "Log today" button.
 
 #### Menstrual Phase Tips:
@@ -57,7 +57,20 @@ Sent at 9:00 AM on 5 random days within each phase. Includes a "Log today" butto
 ## Technical Implementation
 
 - **Trigger**: Notifications are re-calculated and re-scheduled every time the user logs "My period starts today" in the app.
-- **Randomization**: For each phase, 5 unique days are selected randomly to show tips.
-- **Scheduling**: Uses `AlarmManager` with `RTC_WAKEUP`.
+- **Request Codes (Fixed IDs)**:
+    - `1000-1003`: Phase Warnings
+    - `2000-2003`: Phase Starts
+    - `3000`: Late Period Warning
+    - `4000-4019`: Phase Tips (5 per phase)
+- **Automatic Cleanup**: When a new period is logged, all existing alarms in these ranges are explicitly canceled before new ones are scheduled.
 - **Persistence**: Restores alarms after reboot via `BOOT_COMPLETED`.
 - **Action Button**: Every notification includes a "Log today" button.
+
+## Testing
+
+To verify notifications manually via ADB:
+1.  **Grant Permission**: Ensure notification permission is granted.
+2.  **Trigger Phase Warning**:
+    `adb shell am broadcast -a com.tarmiga.luna.TEST_NOTIF --es notification_type PHASE_WARNING --es phase_type LUTEAL -p com.tarmiga.luna`
+3.  **Trigger Phase Tip**:
+    `adb shell am broadcast -a com.tarmiga.luna.TEST_NOTIF --es notification_type DAILY_REMINDER --es phase_type MENSTRUAL --ei tip_index 0 -p com.tarmiga.luna`
