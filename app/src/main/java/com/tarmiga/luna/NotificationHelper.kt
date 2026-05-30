@@ -9,11 +9,12 @@ import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import org.json.JSONException
 import org.json.JSONObject
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
+import java.time.format.DateTimeParseException
 import java.time.temporal.ChronoUnit
 import java.util.Calendar
 
@@ -54,7 +55,7 @@ class NotificationHelper(private val context: Context) {
             val state = CycleState(starts, avgCycleLength)
             
             scheduleAlarmsForState(state)
-        } catch (e: Exception) {
+        } catch (e: JSONException) {
             Log.e("NotificationHelper", "Error parsing state for notifications", e)
         }
     }
@@ -142,33 +143,47 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun showNotification(intent: Intent) {
-        val typeStr = intent.getStringExtra(EXTRA_TYPE) ?: return
-        val type = try { NotificationType.valueOf(typeStr) } catch(e: Exception) { return }
-        val phaseStr = intent.getStringExtra(EXTRA_PHASE)
-        val phase = phaseStr?.let { try { PhaseType.valueOf(it) } catch(e: Exception) { null } }
-        val tipIndex = intent.getIntExtra(EXTRA_TIP_INDEX, 0)
-
-        val content = getNotificationContent(type, phase, tipIndex) ?: return
-
-        val mainIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        val typeStr = intent.getStringExtra(EXTRA_TYPE)
+        val type = try {
+            typeStr?.let { NotificationType.valueOf(it) }
+        } catch (e: IllegalArgumentException) {
+            Log.e("NotificationHelper", "Invalid notification type: $typeStr", e)
+            null
         }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, mainIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(content.title)
-            .setContentText(content.text)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setAutoCancel(true)
-            .setContentIntent(pendingIntent)
-            .addAction(0, "Log today", pendingIntent)
+        val phaseStr = intent.getStringExtra(EXTRA_PHASE)
+        val phase = try {
+            phaseStr?.let { PhaseType.valueOf(it) }
+        } catch (e: IllegalArgumentException) {
+            Log.e("NotificationHelper", "Invalid phase type: $phaseStr", e)
+            null
+        }
 
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val notificationId = type.hashCode() + (phase?.hashCode() ?: 0)
-        notificationManager.notify(notificationId, builder.build())
+        if (type != null) {
+            val tipIndex = intent.getIntExtra(EXTRA_TIP_INDEX, 0)
+            val content = getNotificationContent(type, phase, tipIndex)
+            if (content != null) {
+                val mainIntent = Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+                val pendingIntent = PendingIntent.getActivity(
+                    context, 0, mainIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle(content.title)
+                    .setContentText(content.text)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                    .setAutoCancel(true)
+                    .setContentIntent(pendingIntent)
+                    .addAction(0, "Log today", pendingIntent)
+
+                val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                val notificationId = type.hashCode() + (phase?.hashCode() ?: 0)
+                notificationManager.notify(notificationId, builder.build())
+            }
+        }
     }
 
     private data class Content(val title: String, val text: String)

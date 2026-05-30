@@ -2,6 +2,7 @@ package com.tarmiga.luna
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 
 enum class PhaseType {
     MENSTRUAL, FOLLICULAR, OVULATORY, LUTEAL;
@@ -21,7 +22,7 @@ data class CycleState(
         return cycleStarts.mapNotNull { 
             try {
                 LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE)
-            } catch (e: Exception) {
+            } catch (e: DateTimeParseException) {
                 null
             }
         }.maxOrNull()

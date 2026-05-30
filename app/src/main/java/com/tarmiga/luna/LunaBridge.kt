@@ -5,7 +5,10 @@ import android.content.SharedPreferences
 import android.util.Log
 import android.webkit.JavascriptInterface
 
-class LunaBridge(private val context: Context) {
+class LunaBridge(
+    private val context: Context,
+    private val notificationHelper: NotificationHelper = NotificationHelper(context)
+) {
     private val prefs: SharedPreferences = context.getSharedPreferences("luna_prefs", Context.MODE_PRIVATE)
 
     @JavascriptInterface
@@ -14,7 +17,6 @@ class LunaBridge(private val context: Context) {
         prefs.edit().putString("luna_state", data).apply()
         
         // Sync notifications whenever data is saved (e.g., period logged)
-        val notificationHelper = NotificationHelper(context)
         notificationHelper.syncNotificationsFromState(data)
     }
 

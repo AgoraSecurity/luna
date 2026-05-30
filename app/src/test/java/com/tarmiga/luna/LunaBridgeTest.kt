@@ -23,6 +23,9 @@ class LunaBridgeTest {
     @Mock
     private lateinit var mockEditor: SharedPreferences.Editor
 
+    @Mock
+    private lateinit var mockNotificationHelper: NotificationHelper
+
     private lateinit var lunaBridge: LunaBridge
 
     @Before
@@ -32,20 +35,17 @@ class LunaBridgeTest {
         `when`(mockPrefs.edit()).thenReturn(mockEditor)
         `when`(mockEditor.putString(anyString(), anyString())).thenReturn(mockEditor)
         
-        // Use a mock string for Log.d to avoid RuntimeException in unit tests
-        // or just rely on the fact that we are testing the logic.
-        // Actually, LunaBridge calls Log.d which is a stub in unit tests.
-        
-        lunaBridge = LunaBridge(mockContext)
+        lunaBridge = LunaBridge(mockContext, mockNotificationHelper)
     }
 
     @Test
     fun testSaveData() {
-        val testData = "{\"key\": \"value\"}"
+        val testData = "{\"cycleStarts\": [\"2026-03-20\"], \"avgCycleLength\": 28}"
         lunaBridge.saveData(testData)
         
         verify(mockEditor).putString("luna_state", testData)
         verify(mockEditor).apply()
+        verify(mockNotificationHelper).syncNotificationsFromState(testData)
     }
 
     @Test
