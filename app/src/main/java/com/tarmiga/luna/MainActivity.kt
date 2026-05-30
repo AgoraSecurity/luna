@@ -82,9 +82,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun scheduleTestNotification() {
-        val notificationHelper = NotificationHelper(this)
-        // Schedule for 5 seconds from now (5,000 miliseconds)
-        notificationHelper.scheduleNotification(5000)
+        // Alarms are now scheduled via LunaBridge when data is saved
     }
 }
 

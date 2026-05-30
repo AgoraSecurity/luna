@@ -7,8 +7,19 @@ import android.util.Log
 
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        Log.d("NotificationReceiver", "Alarm received, showing notification")
+        val action = intent.action
         val notificationHelper = NotificationHelper(context)
-        notificationHelper.showNotification()
+
+        if (Intent.ACTION_BOOT_COMPLETED == action) {
+            Log.d("NotificationReceiver", "Boot completed, rescheduling alarms")
+            val prefs = context.getSharedPreferences("luna_prefs", Context.MODE_PRIVATE)
+            val stateJson = prefs.getString("luna_state", null)
+            stateJson?.let {
+                notificationHelper.syncNotificationsFromState(it)
+            }
+        } else {
+            Log.d("NotificationReceiver", "Alarm received, showing notification")
+            notificationHelper.showNotification(intent)
+        }
     }
 }
