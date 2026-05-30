@@ -4,6 +4,12 @@ Android app (`com.tarmiga.luna`) — WebView shell with a Compose theme layer.
 
 [![CI](https://github.com/agorasecurity/Luna/actions/workflows/ci.yml/badge.svg)](https://github.com/agorasecurity/Luna/actions/workflows/ci.yml)
 
+## Google Developer Account
+
+Account ID: 5379539333161672670
+
+Package name: com.tarmiga.luna
+
 ## Requirements
 
 - JDK 21 (Gradle toolchain)
