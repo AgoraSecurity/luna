@@ -28,9 +28,10 @@
 
         <receiver
             android:name=".NotificationReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="com.tarmiga.luna.TEST_NOTIF" />
             </intent-filter>
         </receiver>
     </application>

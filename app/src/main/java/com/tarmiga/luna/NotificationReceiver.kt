@@ -8,6 +8,13 @@ import android.util.Log
 class NotificationReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
+        Log.d("NotificationReceiver", "onReceive: action=$action")
+        
+        // Log all extras for debugging
+        intent.extras?.keySet()?.forEach { key ->
+            Log.d("NotificationReceiver", "Extra: $key = ${intent.extras?.get(key)}")
+        }
+
         val notificationHelper = NotificationHelper(context)
 
         if (Intent.ACTION_BOOT_COMPLETED == action) {
@@ -18,7 +25,9 @@ class NotificationReceiver : BroadcastReceiver() {
                 notificationHelper.syncNotificationsFromState(it)
             }
         } else {
-            Log.d("NotificationReceiver", "Alarm received, showing notification")
+            // This handles both scheduled alarms (which have no action set) 
+            // and manual adb broadcasts for testing.
+            Log.d("NotificationReceiver", "Notification intent received: $action")
             notificationHelper.showNotification(intent)
         }
     }

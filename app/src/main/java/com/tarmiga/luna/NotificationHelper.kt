@@ -144,6 +144,8 @@ class NotificationHelper(private val context: Context) {
 
     fun showNotification(intent: Intent) {
         val typeStr = intent.getStringExtra(EXTRA_TYPE)
+        Log.d("NotificationHelper", "showNotification: typeStr=$typeStr")
+        
         val type = try {
             typeStr?.let { NotificationType.valueOf(it) }
         } catch (e: IllegalArgumentException) {
@@ -152,6 +154,8 @@ class NotificationHelper(private val context: Context) {
         }
 
         val phaseStr = intent.getStringExtra(EXTRA_PHASE)
+        Log.d("NotificationHelper", "showNotification: phaseStr=$phaseStr")
+        
         val phase = try {
             phaseStr?.let { PhaseType.valueOf(it) }
         } catch (e: IllegalArgumentException) {
@@ -162,6 +166,8 @@ class NotificationHelper(private val context: Context) {
         if (type != null) {
             val tipIndex = intent.getIntExtra(EXTRA_TIP_INDEX, 0)
             val content = getNotificationContent(type, phase, tipIndex)
+            Log.d("NotificationHelper", "Content found: ${content != null}")
+
             if (content != null) {
                 val mainIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
