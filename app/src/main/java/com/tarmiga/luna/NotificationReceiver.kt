@@ -11,8 +11,12 @@ class NotificationReceiver : BroadcastReceiver() {
         Log.d("NotificationReceiver", "onReceive: action=$action")
         
         // Log all extras for debugging
-        intent.extras?.keySet()?.forEach { key ->
-            Log.d("NotificationReceiver", "Extra: $key = ${intent.extras?.get(key)}")
+        intent.extras?.let { extras ->
+            extras.keySet().forEach { key ->
+                @Suppress("DEPRECATION")
+                val value = extras.get(key)
+                Log.d("NotificationReceiver", "Extra: $key = $value")
+            }
         }
 
         val notificationHelper = NotificationHelper(context)

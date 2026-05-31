@@ -1,6 +1,7 @@
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
+  alias(libs.plugins.ksp)
 }
 
 android {
@@ -50,10 +51,19 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.ktx)
   testImplementation(libs.junit)
   testImplementation(libs.mockito.core)
+  testImplementation("org.json:json:20231013")
   androidTestImplementation(platform(libs.androidx.compose.bom))
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(libs.androidx.junit)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
+
+  // Room
+  implementation("androidx.room:room-runtime:2.8.4")
+  implementation("androidx.room:room-ktx:2.8.4")
+  ksp("androidx.room:room-compiler:2.8.4")
+
+  // Navigation
+  implementation(libs.androidx.navigation.compose)
 }

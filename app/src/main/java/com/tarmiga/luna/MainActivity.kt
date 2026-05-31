@@ -25,8 +25,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import android.content.Context
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.tarmiga.luna.data.LunaDatabase
+import com.tarmiga.luna.ui.onboarding.OnboardingScreen
+import com.tarmiga.luna.ui.onboarding.OnboardingViewModel
 import com.tarmiga.luna.ui.theme.LunaTheme
 
 class MainActivity : ComponentActivity() {
@@ -52,13 +57,33 @@ class MainActivity : ComponentActivity() {
 
         checkNotificationPermission()
 
+        val database = LunaDatabase.getDatabase(this)
+        val prefs = getSharedPreferences("luna_prefs", Context.MODE_PRIVATE)
+
         setContent {
+            val onboardingViewModel: OnboardingViewModel = viewModel(
+                factory = OnboardingViewModel.provideFactory(database, prefs)
+            )
+            val onboardingCompleted = remember { mutableStateOf(prefs.getBoolean("onboarding_completed", false)) }
+
             LunaTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    WebViewScreen(
-                        url = "file:///android_asset/index.html",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    if (!onboardingCompleted.value) {
+                        OnboardingScreen(
+                            viewModel = onboardingViewModel,
+                            onFinished = {
+                                onboardingCompleted.value = true
+                            }
+                        )
+                    } else {
+                        WebViewScreen(
+                            url = "file:///android_asset/index.html",
+                            modifier = Modifier.padding(innerPadding),
+                            database = database,
+                            prefs = prefs,
+                            notificationHelper = notificationHelper
+                        )
+                    }
                 }
             }
         }
@@ -89,7 +114,13 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
+fun WebViewScreen(
+    url: String,
+    modifier: Modifier = Modifier,
+    database: LunaDatabase,
+    prefs: android.content.SharedPreferences,
+    notificationHelper: NotificationHelper
+) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     var canGoBack by remember { mutableStateOf(false) }
 
@@ -102,14 +133,16 @@ fun WebViewScreen(url: String, modifier: Modifier = Modifier) {
             WebView(context).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
-                settings.databaseEnabled = true
                 settings.allowFileAccess = true
                 settings.useWideViewPort = true
                 settings.loadWithOverviewMode = true
                 settings.cacheMode = WebSettings.LOAD_DEFAULT
 
                 // Add the native bridge
-                addJavascriptInterface(LunaBridge(context), "LunaNative")
+                addJavascriptInterface(
+                    LunaBridge(database.cycleDao(), prefs, notificationHelper),
+                    "LunaNative"
+                )
 
                 webViewClient = object : WebViewClient() {
                     override fun onPageFinished(view: WebView?, url: String?) {

@@ -571,11 +571,9 @@
   let _state = null;
 
   function defaultState() {
-    // Seed: last period started March 20, 2026
-    const seedDate = new Date(2026, 2, 20); // Mar 20 (Local)
     return {
-      cycleStarts: [getLocalDateString(seedDate)], // array of YYYY-MM-DD strings
-      logs: {},       // { 'YYYY-MM-DD': { energy, mood, symptoms[], note, periodStart } }
+      cycleStarts: [],
+      logs: {},
       avgCycleLength: 28
     };
   }
