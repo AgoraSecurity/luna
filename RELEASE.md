@@ -4,6 +4,9 @@ This document outlines the steps to build, sign, upload, and tag a new release o
 
 ## Steps
 
+### 0. Update the version
+- Update `versionCode` and `versionName` in `app/build.gradle.kts`.
+
 ### 1. Build and Sign
 - Open the project in Android Studio.
 - Go to **Build > Generate Signed Bundle / APK...**
@@ -23,7 +26,6 @@ This document outlines the steps to build, sign, upload, and tag a new release o
 - Once the upload is complete, check for any errors or warnings reported by the Play Console.
 - If there are errors:
     - Fix the issues in the code.
-    - Update `versionCode` (and optionally `versionName`) in `app/build.gradle.kts`.
     - Repeat from **Step 1**.
 
 ### 4. Tag the Release
