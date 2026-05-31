@@ -163,27 +163,13 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
-    fun cancelTips() {
-        for (day in 1..40) cancelAlarm(ID_DAILY_TIP + day)
-    }
-
-    fun cancelWarnings() {
-        for (day in 1..40) cancelAlarm(ID_PHASE_WARNING + day)
-    }
-
-    fun cancelPhaseStarts() {
-        for (day in 1..40) cancelAlarm(ID_PHASE_START + day)
-    }
-
-    fun cancelLatePeriod() {
-        cancelAlarm(ID_PERIOD_LATE)
-    }
-
     private fun cancelAllAlarms() {
-        cancelTips()
-        cancelWarnings()
-        cancelPhaseStarts()
-        cancelLatePeriod()
+        for (day in 1..40) {
+            cancelAlarm(ID_DAILY_TIP + day)
+            cancelAlarm(ID_PHASE_WARNING + day)
+            cancelAlarm(ID_PHASE_START + day)
+        }
+        cancelAlarm(ID_PERIOD_LATE)
     }
 
     fun showNotification(intent: Intent) {
@@ -197,10 +183,13 @@ class NotificationHelper(private val context: Context) {
 
         val day = intent.getIntExtra(EXTRA_DAY, -1)
         val phaseStr = intent.getStringExtra(EXTRA_PHASE)
-        val phase = try {
-            phaseStr?.let { PhaseType.valueOf(it) }
-        } catch (e: IllegalArgumentException) {
-            null
+        val phase = phaseStr?.let {
+            try {
+                PhaseType.valueOf(it)
+            } catch (e: IllegalArgumentException) {
+                Log.e("NotificationHelper", "Invalid phase type: $it", e)
+                null
+            }
         }
         val index = intent.getIntExtra(EXTRA_INDEX, 0)
 
