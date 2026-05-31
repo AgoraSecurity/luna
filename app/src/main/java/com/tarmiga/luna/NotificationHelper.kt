@@ -26,7 +26,8 @@ class NotificationHelper(private val context: Context) {
         
         const val EXTRA_TYPE = "notification_type"
         const val EXTRA_PHASE = "phase_type"
-        const val EXTRA_TIP_INDEX = "tip_index"
+        const val EXTRA_INDEX = "tip_index"
+        const val EXTRA_DAY = "notification_day"
 
         // Base IDs for RequestCodes
         private const val ID_PHASE_WARNING = 1000
@@ -66,57 +67,59 @@ class NotificationHelper(private val context: Context) {
 
     private fun scheduleAlarmsForState(state: CycleState) {
         val latestStart = state.getLatestStart() ?: return
-        val len = state.avgCycleLength
 
         cancelAllAlarms()
 
-        // Phase Warnings (2 days before)
-        schedulePhaseAlarm(latestStart.plusDays(4 - 2), NotificationType.PHASE_WARNING, PhaseType.FOLLICULAR)
-        schedulePhaseAlarm(latestStart.plusDays(12 - 2), NotificationType.PHASE_WARNING, PhaseType.OVULATORY)
-        schedulePhaseAlarm(latestStart.plusDays((len - 14).toLong() - 1), NotificationType.PHASE_WARNING, PhaseType.LUTEAL)
-        schedulePhaseAlarm(latestStart.plusDays(len.toLong() - 1), NotificationType.PHASE_WARNING, PhaseType.MENSTRUAL)
-
-        // Phase Starts (Day of)
-        schedulePhaseAlarm(latestStart.plusDays(6 - 1), NotificationType.PHASE_START, PhaseType.FOLLICULAR)
-        schedulePhaseAlarm(latestStart.plusDays(14 - 1), NotificationType.PHASE_START, PhaseType.OVULATORY)
-        schedulePhaseAlarm(latestStart.plusDays((len - 13).toLong() - 1), NotificationType.PHASE_START, PhaseType.LUTEAL)
-
-        // Period Late (3 days after expected start)
-        schedulePhaseAlarm(latestStart.plusDays(len.toLong() + 3), NotificationType.PERIOD_LATE, null)
-
-        // Random Daily Tips (5 per phase)
-        scheduleRandomTipsForPhase(latestStart, 1, 5, PhaseType.MENSTRUAL)
-        scheduleRandomTipsForPhase(latestStart, 6, 13, PhaseType.FOLLICULAR)
-        scheduleRandomTipsForPhase(latestStart, 14, (len - 14), PhaseType.OVULATORY)
-        scheduleRandomTipsForPhase(latestStart, (len - 13), len, PhaseType.LUTEAL)
+        // Day 2: Menstrual, Tip (9 AM)
+        scheduleCalendarAlarm(latestStart, 2, NotificationType.TIP, PhaseType.MENSTRUAL, 0)
+        // Day 4: Menstrual, Coming up (10 AM)
+        scheduleCalendarAlarm(latestStart, 4, NotificationType.PHASE_WARNING, PhaseType.MENSTRUAL)
+        // Day 6: Follicular, Phase change (11 AM)
+        scheduleCalendarAlarm(latestStart, 6, NotificationType.PHASE_START, PhaseType.FOLLICULAR)
+        // Day 8: Follicular, Tip (9 AM)
+        scheduleCalendarAlarm(latestStart, 8, NotificationType.TIP, PhaseType.FOLLICULAR, 0)
+        // Day 10: Follicular, Tip (9 AM)
+        scheduleCalendarAlarm(latestStart, 10, NotificationType.TIP, PhaseType.FOLLICULAR, 1)
+        // Day 12: Follicular, Coming up (10 AM)
+        scheduleCalendarAlarm(latestStart, 12, NotificationType.PHASE_WARNING, PhaseType.FOLLICULAR)
+        // Day 14: Ovulatory, Phase change (11 AM)
+        scheduleCalendarAlarm(latestStart, 14, NotificationType.PHASE_START, PhaseType.OVULATORY)
+        // Day 16: Ovulatory, Tip (9 AM)
+        scheduleCalendarAlarm(latestStart, 16, NotificationType.TIP, PhaseType.OVULATORY, 0)
+        // Day 17: Ovulatory, Coming up (10 AM)
+        scheduleCalendarAlarm(latestStart, 17, NotificationType.PHASE_WARNING, PhaseType.OVULATORY)
+        // Day 19: Luteal, Phase change (11 AM)
+        scheduleCalendarAlarm(latestStart, 19, NotificationType.PHASE_START, PhaseType.LUTEAL)
+        // Day 21: Luteal, Tip (9 AM)
+        scheduleCalendarAlarm(latestStart, 21, NotificationType.TIP, PhaseType.LUTEAL, 0)
+        // Day 23: Luteal, Tip (9 AM)
+        scheduleCalendarAlarm(latestStart, 23, NotificationType.TIP, PhaseType.LUTEAL, 1)
+        // Day 25: Luteal, Tip (9 AM)
+        scheduleCalendarAlarm(latestStart, 25, NotificationType.TIP, PhaseType.LUTEAL, 2)
+        // Day 27: Luteal, Coming up (10 AM)
+        scheduleCalendarAlarm(latestStart, 27, NotificationType.PHASE_WARNING, PhaseType.LUTEAL)
+        // Day 31: Late Period (8 AM)
+        scheduleCalendarAlarm(latestStart, 31, NotificationType.PERIOD_LATE)
     }
 
-    private fun scheduleRandomTipsForPhase(latestStart: LocalDate, startDay: Int, endDay: Int, phase: PhaseType) {
-        val duration = endDay - startDay + 1
-        if (duration <= 0) return
-        
-        val numTips = 5
-        val days = (0 until duration).shuffled().take(numTips)
-        
-        days.forEachIndexed { index, dayOffset ->
-            val date = latestStart.plusDays((startDay + dayOffset - 1).toLong())
-            val requestCode = ID_DAILY_TIP + (phase.ordinal * 5) + index
-            schedulePhaseAlarm(date, NotificationType.DAILY_REMINDER, phase, index, requestCode)
-        }
-    }
-
-    private fun schedulePhaseAlarm(
-        date: LocalDate, 
-        type: NotificationType, 
-        phase: PhaseType?, 
-        tipIndex: Int = -1,
-        forcedRequestCode: Int = -1
+    private fun scheduleCalendarAlarm(
+        latestStart: LocalDate,
+        day: Int,
+        type: NotificationType,
+        phase: PhaseType? = null,
+        index: Int = 0
     ) {
+        val date = latestStart.plusDays((day - 1).toLong())
         val now = LocalDate.now()
         if (date.isBefore(now)) return
 
-        // Set alarm for 10:00 AM on the target date (or 9:00 AM for daily reminder)
-        val hour = if (type == NotificationType.DAILY_REMINDER) 9 else 10
+        val hour = when (type) {
+            NotificationType.TIP -> 9
+            NotificationType.PHASE_WARNING -> 10
+            NotificationType.PHASE_START -> 11
+            NotificationType.PERIOD_LATE -> 8
+        }
+
         val triggerTime = date.atTime(hour, 0)
             .atZone(ZoneId.systemDefault())
             .toInstant()
@@ -124,20 +127,16 @@ class NotificationHelper(private val context: Context) {
 
         val intent = Intent(context, NotificationReceiver::class.java).apply {
             putExtra(EXTRA_TYPE, type.name)
+            putExtra(EXTRA_DAY, day)
             phase?.let { putExtra(EXTRA_PHASE, it.name) }
-            if (tipIndex != -1) putExtra(EXTRA_TIP_INDEX, tipIndex)
+            putExtra(EXTRA_INDEX, index)
         }
 
-        // Use consistent request code
-        val requestCode = if (forcedRequestCode != -1) {
-            forcedRequestCode
-        } else {
-            when (type) {
-                NotificationType.PHASE_WARNING -> ID_PHASE_WARNING + (phase?.ordinal ?: 0)
-                NotificationType.PHASE_START -> ID_PHASE_START + (phase?.ordinal ?: 0)
-                NotificationType.PERIOD_LATE -> ID_PERIOD_LATE
-                else -> type.hashCode() + (phase?.hashCode() ?: 0) + date.hashCode()
-            }
+        val requestCode = when (type) {
+            NotificationType.TIP -> ID_DAILY_TIP + day
+            NotificationType.PHASE_WARNING -> ID_PHASE_WARNING + day
+            NotificationType.PHASE_START -> ID_PHASE_START + day
+            NotificationType.PERIOD_LATE -> ID_PERIOD_LATE
         }
         
         val pendingIntent = PendingIntent.getBroadcast(
@@ -164,17 +163,27 @@ class NotificationHelper(private val context: Context) {
         }
     }
 
-    private fun cancelAllAlarms() {
-        // Clean phase warnings (1000-1003)
-        PhaseType.entries.forEach { cancelAlarm(ID_PHASE_WARNING + it.ordinal) }
-        // Clean phase starts (2000-2003)
-        PhaseType.entries.forEach { cancelAlarm(ID_PHASE_START + it.ordinal) }
-        // Clean late period (3000)
+    fun cancelTips() {
+        for (day in 1..40) cancelAlarm(ID_DAILY_TIP + day)
+    }
+
+    fun cancelWarnings() {
+        for (day in 1..40) cancelAlarm(ID_PHASE_WARNING + day)
+    }
+
+    fun cancelPhaseStarts() {
+        for (day in 1..40) cancelAlarm(ID_PHASE_START + day)
+    }
+
+    fun cancelLatePeriod() {
         cancelAlarm(ID_PERIOD_LATE)
-        // Clean tips (4000-4019)
-        for (i in 0 until 20) {
-            cancelAlarm(ID_DAILY_TIP + i)
-        }
+    }
+
+    private fun cancelAllAlarms() {
+        cancelTips()
+        cancelWarnings()
+        cancelPhaseStarts()
+        cancelLatePeriod()
     }
 
     fun showNotification(intent: Intent) {
@@ -186,17 +195,17 @@ class NotificationHelper(private val context: Context) {
             null
         }
 
+        val day = intent.getIntExtra(EXTRA_DAY, -1)
         val phaseStr = intent.getStringExtra(EXTRA_PHASE)
         val phase = try {
             phaseStr?.let { PhaseType.valueOf(it) }
         } catch (e: IllegalArgumentException) {
-            Log.e("NotificationHelper", "Invalid phase type: $phaseStr", e)
             null
         }
+        val index = intent.getIntExtra(EXTRA_INDEX, 0)
 
-        if (type != null) {
-            val tipIndex = intent.getIntExtra(EXTRA_TIP_INDEX, 0)
-            val content = NotificationContent.get(type, phase, tipIndex)
+        if (type != null && day != -1) {
+            val content = NotificationContent.get(type, phase, index)
             if (content != null) {
                 val mainIntent = Intent(context, MainActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -215,7 +224,7 @@ class NotificationHelper(private val context: Context) {
                     .addAction(0, "Log today", pendingIntent)
 
                 val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                val notificationId = type.hashCode() + (phase?.hashCode() ?: 0)
+                val notificationId = type.hashCode() + day
                 notificationManager.notify(notificationId, builder.build())
             }
         }

@@ -2,6 +2,7 @@ package com.tarmiga.luna
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertTrue
@@ -35,16 +36,35 @@ class NotificationHelperInstrumentedTest {
 
     @Test
     fun testShowNotification() {
-        // This won't throw NPE in androidTest because the framework is present
-        notificationHelper.showNotification()
+        val intent = Intent(context, NotificationReceiver::class.java).apply {
+            putExtra(NotificationHelper.EXTRA_TYPE, NotificationType.TIP.name)
+            putExtra(NotificationHelper.EXTRA_DAY, 2)
+            putExtra(NotificationHelper.EXTRA_PHASE, PhaseType.MENSTRUAL.name)
+            putExtra(NotificationHelper.EXTRA_INDEX, 0)
+        }
+        notificationHelper.showNotification(intent)
         
-        // We can't easily verify the notification is actually visible on screen without UI Automator,
-        // but this test ensures the code executes without crashing in the Android environment.
+        // Ensures the code executes without crashing in the Android environment.
     }
     
     @Test
-    fun testScheduleNotification() {
-        // Ensures the alarm scheduling logic runs without crash
-        notificationHelper.scheduleNotification(1000)
+    fun testCancellationMethods() {
+        // Just verify these don't crash
+        notificationHelper.cancelTips()
+        notificationHelper.cancelWarnings()
+        notificationHelper.cancelPhaseStarts()
+        notificationHelper.cancelLatePeriod()
+    }
+
+    @Test
+    fun testSyncNotificationsFromState() {
+        val json = """
+            {
+                "cycleStarts": ["2024-01-01"],
+                "avgCycleLength": 28
+            }
+        """.trimIndent()
+        notificationHelper.syncNotificationsFromState(json)
+        // Ensures scheduling logic runs without crash
     }
 }

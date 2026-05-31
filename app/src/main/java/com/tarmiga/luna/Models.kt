@@ -11,7 +11,7 @@ enum class PhaseType {
 }
 
 enum class NotificationType {
-    PHASE_WARNING, PHASE_START, PERIOD_LATE, DAILY_REMINDER
+    PHASE_WARNING, PHASE_START, PERIOD_LATE, TIP
 }
 
 data class CycleState(

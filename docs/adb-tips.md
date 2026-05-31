@@ -41,7 +41,7 @@ adb shell am broadcast -a com.tarmiga.luna.TEST_NOTIF \
 **Ejemplo: Tip diario de fase folicular (índice 0-4)**
 ```bash
 adb shell am broadcast -a com.tarmiga.luna.TEST_NOTIF \
-  --es notification_type DAILY_REMINDER \
+  --es notification_type TIP \
   --es phase_type FOLLICULAR \
   --ei tip_index 0 \
   -p com.tarmiga.luna
