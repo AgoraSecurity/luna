@@ -2,6 +2,7 @@ package com.tarmiga.luna.ui.onboarding
 
 import android.Manifest
 import android.app.DatePickerDialog
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,6 +28,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,6 +41,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.tooling.preview.Preview
+import com.tarmiga.luna.ui.theme.LunaTheme
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -206,14 +212,45 @@ fun DateSelectionStep(viewModel: OnboardingViewModel, onNext: () -> Unit) {
 
 @Composable
 fun PermissionStep(onFinished: () -> Unit) {
+    val context = LocalContext.current
+    var isPermissionGranted by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+        )
+    }
+
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            onFinished()
-        }
+        isPermissionGranted = isGranted
     }
 
+    PermissionStepContent(
+        isPermissionGranted = isPermissionGranted,
+        onEnableClick = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                isPermissionGranted = true
+            }
+        },
+        onFinished = onFinished
+    )
+}
+
+@Composable
+fun PermissionStepContent(
+    isPermissionGranted: Boolean,
+    onEnableClick: () -> Unit,
+    onFinished: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -232,31 +269,70 @@ fun PermissionStep(onFinished: () -> Unit) {
             fontSize = 16.sp,
             color = Color.Gray,
             textAlign = TextAlign.Center,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        Text(
+            text = if (isPermissionGranted) "Status: Done" else "Status: Permission pending",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (isPermissionGranted) Color(0xFF4CAF50) else Color(0xFFFFA000),
             modifier = Modifier.padding(bottom = 48.dp)
         )
 
-        Button(
-            onClick = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                } else {
-                    onFinished()
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A))
-        ) {
-            Text("Enable Notifications", color = Color.White, fontWeight = FontWeight.SemiBold)
-        }
+        if (!isPermissionGranted) {
+            Button(
+                onClick = onEnableClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A))
+            ) {
+                Text("Enable Notifications", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
 
-        TextButton(
-            onClick = onFinished,
-            modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text("Maybe Later", color = Color.Gray)
+            TextButton(
+                onClick = onFinished,
+                modifier = Modifier.padding(top = 16.dp)
+            ) {
+                Text("Maybe Later", color = Color.Gray)
+            }
+        } else {
+            Button(
+                onClick = onFinished,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A1A1A))
+            ) {
+                Text("Finish", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PermissionStepPendingPreview() {
+    LunaTheme {
+        PermissionStepContent(
+            isPermissionGranted = false,
+            onEnableClick = {},
+            onFinished = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PermissionStepGrantedPreview() {
+    LunaTheme {
+        PermissionStepContent(
+            isPermissionGranted = true,
+            onEnableClick = {},
+            onFinished = {}
+        )
     }
 }

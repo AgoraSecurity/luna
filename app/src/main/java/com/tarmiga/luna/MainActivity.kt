@@ -1,6 +1,5 @@
 package com.tarmiga.luna
 
-import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,7 +13,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -36,17 +34,6 @@ import com.tarmiga.luna.ui.theme.LunaTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        if (isGranted) {
-            Log.d("MainActivity", "Notification permission granted")
-            scheduleTestNotification()
-        } else {
-            Log.d("MainActivity", "Notification permission denied")
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -54,8 +41,6 @@ class MainActivity : ComponentActivity() {
 
         val notificationHelper = NotificationHelper(this)
         notificationHelper.createNotificationChannel()
-
-        checkNotificationPermission()
 
         val database = LunaDatabase.getDatabase(this)
         val prefs = getSharedPreferences("luna_prefs", Context.MODE_PRIVATE)
@@ -87,29 +72,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    private fun checkNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    scheduleTestNotification()
-                }
-                else -> {
-                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-            }
-        } else {
-            // Permission is granted by default on older versions
-            scheduleTestNotification()
-        }
-    }
-
-    private fun scheduleTestNotification() {
-        // Alarms are now scheduled via LunaBridge when data is saved
     }
 }
 
